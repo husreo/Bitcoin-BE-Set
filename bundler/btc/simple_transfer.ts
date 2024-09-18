@@ -18,13 +18,12 @@ const SEND_UTXO_LIMIT = 7000;
 const SEND_AMOUNT = 10000;
 const INITIAL_FEE = 1000;
 const TESTNET_FEERATE = 20;
-const RECEIVEADDRESS = 'tb1p04dlalf3vehyh5dfgaseljxcjd7cztrgyagyhpkt4h02deqq8vuqh82xww';
-const receivedAddress = "";
+const RECEIVEADDRESS = '2N6g6niDLyH1Ef1QUWi7bPoo5FxP8dFZSC6';
 
 const networkType: string = networkConfig.networkType;
 const seed: string = process.env.MNEMONIC as string;
 
-const tranferBTC = async () => {
+export const tranferBTC = async () => {
     let initialFee = 0;
     let redeemFee = INITIAL_FEE;
     let psbt;
