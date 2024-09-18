@@ -36,10 +36,12 @@ export class SeedWallet {
         if (!bip39.validateMnemonic(mnemonic)) {
             throw new Error("invalid mnemonic");
         }
+
         this.bip32 = bip32.fromSeed(
             bip39.mnemonicToSeedSync(mnemonic),
             this.network
         );
+        
         this.ecPair = ECPair.fromPrivateKey(
             this.bip32.derivePath(this.hdPath).privateKey!,
             { network: this.network }
