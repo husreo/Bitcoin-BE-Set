@@ -28,6 +28,7 @@ export const getUTXO = async (address:string, networkType: string): Promise<IUtx
 export const selectUTXO = async (utxos:IUtxo[], targetAmount: number, initialFee: number): Promise<IUtxo[]> => {
     const selectUTXO: IUtxo[] = [];
     utxos.sort((a, b) => a.value - b.value);
+    
     let sum = targetAmount + initialFee;
     const utxo = utxos.find((utxo) => utxo.value >= sum);
 
@@ -38,10 +39,12 @@ export const selectUTXO = async (utxos:IUtxo[], targetAmount: number, initialFee
 
     for (let i = utxos.length; i > 0; i--) {
         sum = sum - utxos[i - 1].value;
-        selectUTXO[utxos.length - i] = utxos[i];
+        selectUTXO[utxos.length - i] = utxos[i-1];
+        console.log(selectUTXO[utxos.length - i]);
+        
         if (sum <= 0) break;
     }
-
+    
     if (sum >= 0) throw new Error("No btcs");
     return selectUTXO;
 }

@@ -1,18 +1,19 @@
 import networkConfig from "../../config/network.config";
 import { SeedWallet } from "../../wallets/SeedWallet";
 import * as Bitcoin from 'bitcoinjs-lib';
+import * as ecc from "tiny-secp256k1";
 import dotenv from 'dotenv';
 import { createPsbt, getUTXO, selectUTXO } from "../../manageUTXO/utxo";
 import { pushBTCpmt } from "../../manageUTXO/mempool";
 
 dotenv.config();
+Bitcoin.initEccLib(ecc);
 
 interface IUtxo {
     txid: string;
     vout: number;
     value: number;
 }
-
 
 const SEND_UTXO_LIMIT = 7000;
 const SEND_AMOUNT = 10000;
@@ -30,19 +31,16 @@ export const tranferBTC = async () => {
 
     const wallet = new SeedWallet({ networkType: networkType, seed: seed });
     const utxos = await getUTXO(wallet.address, networkType);
-    console.log(utxos);
-
+    
     do {
         initialFee = redeemFee;
         const selectedUTXO = await selectUTXO(utxos, SEND_AMOUNT, initialFee);
+        
         psbt = await createPsbt(selectedUTXO, SEND_AMOUNT, wallet, RECEIVEADDRESS, initialFee);
         psbt = wallet.signPsbt(psbt, wallet.ecPair);
         redeemFee = psbt.extractTransaction().virtualSize() * TESTNET_FEERATE;
     } while (redeemFee != initialFee)
 
-    console.log("redeemfee", redeemFee);
     const txHex = psbt.extractTransaction().toHex();
-    console.log("txhex", txHex);
     const txId = await pushBTCpmt(txHex, networkType);
-    console.log("txId", txId);
 }
