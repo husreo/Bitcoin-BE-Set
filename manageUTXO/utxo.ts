@@ -7,6 +7,7 @@ interface IUtxo {
     vout: number;
     value: number;
 }
+
 const networkType: string = networkConfig.networkType;
 
 export const getUTXO = async (address:string, networkType: string): Promise<IUtxo[]> => {

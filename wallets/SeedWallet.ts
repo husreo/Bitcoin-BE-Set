@@ -17,7 +17,8 @@ const ECPair = ECPairFactory(ecc);
 const bip32 = BIP32Factory(ecc);
 
 export class SeedWallet {
-    private hdPath = "m/86'/0'/0'/0/0";
+    
+    private hdPath = "m/84'/0'/0'/0/0";
     private network: bitcoin.networks.Network;
     public ecPair: ECPairInterface;
     public address: string;
@@ -26,11 +27,25 @@ export class SeedWallet {
     private bip32: BIP32Interface;
 
     constructor( walletParam: ISeedWallet ) {
+        switch (process.env.WITNESSTYPE) {
+            case "segwit":
+                this.hdPath = "m/84'/0'/0'/0/0";
+                break;
+            case "taproot":
+                this.hdPath = "m/86'/0'/0'/0/0";
+                break;
+            case "legacy":
+                this.hdPath = "m/44'/0'/0'/0/0";
+                break;
+            default:
+                break;
+        }
         if (walletParam.networkType == "mainnet") {
             this.network = networks.bitcoin;
         } else {
             this.network = networks.testnet
         }
+        
         const mnemonic = walletParam.seed;
 
         if (!bip39.validateMnemonic(mnemonic)) {
@@ -41,19 +56,47 @@ export class SeedWallet {
             bip39.mnemonicToSeedSync(mnemonic),
             this.network
         );
-        
+
         this.ecPair = ECPair.fromPrivateKey(
             this.bip32.derivePath(this.hdPath).privateKey!,
             { network: this.network }
         );
+        let witnesswallet:any;
+        switch (process.env.WITNESSTYPE) {
+            case "segwit":
+                witnesswallet = bitcoin.payments.p2wpkh({
+                    pubkey: this.ecPair.publicKey,
+                    network: this.network,
+                });
+                break;
+            
+            case "taproot":
+                witnesswallet = bitcoin.payments.p2tr({
+                    internalPubkey: this.ecPair.publicKey.subarray(1, 33),
+                    network: this.network,
+                });
+                break;
 
-        const { address, output } = bitcoin.payments.p2tr({
-            internalPubkey: this.ecPair.publicKey.subarray(1, 33),
-            network: this.network,
-        });
-
-        this.address = address as string;
-        this.output = output as Buffer;
+            case "legacy":
+                this.hdPath = "m/44'/0'/0'/0/0";
+                
+                break;
+            default:
+                break;
+        }
+        // const { address, output } = bitcoin.payments.p2tr({
+        //     internalPubkey: this.ecPair.publicKey.subarray(1, 33),
+        //     network: this.network,
+        // });
+        
+        // const sigaddress = bitcoin.payments.p2wpkh({
+        //     pubkey: this.ecPair.publicKey,
+        //     network: this.network,
+        // })
+        // console.log(sigaddress.address);
+        
+        this.address = witnesswallet.address as string;
+        this.output = witnesswallet.output as Buffer;
         this.publicKey = this.ecPair.publicKey.toString("hex");
     }
 

@@ -1,13 +1,10 @@
 import networkConfig from "../../config/network.config";
 import { SeedWallet } from "../../wallets/SeedWallet";
-import * as Bitcoin from 'bitcoinjs-lib';
-import * as ecc from "tiny-secp256k1";
 import dotenv from 'dotenv';
 import { createPsbt, getUTXO, selectUTXO } from "../../manageUTXO/utxo";
 import { pushBTCpmt } from "../../manageUTXO/mempool";
 
 dotenv.config();
-Bitcoin.initEccLib(ecc);
 
 interface IUtxo {
     txid: string;
