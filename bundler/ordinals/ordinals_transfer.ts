@@ -3,6 +3,7 @@ import networkConfig from "../../config/network.config";
 import * as Bitcoin from 'bitcoinjs-lib';
 import axios from "axios";
 import { getUTXO, selectUTXO } from "../../manageUTXO/utxo";
+import { pushBTCpmt } from "../../manageUTXO/mempool";
 
 const networkType: string = networkConfig.networkType;
 const INITIAL_FEE = 400;
@@ -44,7 +45,31 @@ export async function sendOrdinalsController(
     const btcUtxos = await getUTXO(wallet.address, "testnet");
     do {
         initialFee = redeemFee;
-        const selectedUTXO = await selectUTXO(btcUtxos, 0, initialFee);
+        const selectedUtxo = await selectUTXO(btcUtxos, 0, initialFee);
+
+        ////////////////////////////////////////////////////////////////////////////////////////////////
+
+        let value = 0;
+
+        for (let i = 0; i < selectedUtxo.length; i++) {
+            psbt.addInput({
+                hash: selectedUtxo[i].txid,
+                index: selectedUtxo[i].vout,
+                witnessUtxo: {
+                    value: selectedUtxo[i].value,
+                    script: wallet.output,
+                },
+                tapInternalKey: Buffer.from(wallet.publicKey, "hex").subarray(1, 33),
+            })
+            value += selectedUtxo[i].value;
+        }
+
+        psbt.addOutput({
+            address: wallet.address,
+            value: value - initialFee,
+        })
+
+        ////////////////////////////////////////////////////////////////////////////////////////////////
     } while (redeemFee != initialFee);
     // const feeRate = (await getFeeRate()) + 400;
     // console.log("feeRate ==> ", feeRate);
@@ -79,8 +104,9 @@ export async function sendOrdinalsController(
     // });
 
     // console.log("psbt.toHex() ==> ", psbt.toHex());
-
-    return psbt.toHex();
+    const txHex = psbt.extractTransaction().toHex();
+    const txId = await pushBTCpmt(txHex, networkType);
+    // return psbt.toHex();
 }
 
 export const getInscriptionData = async (
