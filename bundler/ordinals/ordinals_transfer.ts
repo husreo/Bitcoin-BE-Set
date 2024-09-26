@@ -6,18 +6,19 @@ import { getUTXO, selectUTXO } from "../../manageUTXO/utxo";
 import { pushBTCpmt } from "../../manageUTXO/mempool";
 
 const networkType: string = networkConfig.networkType;
+const TESTNET_FEERATE = 20;
 const INITIAL_FEE = 400;
 
 export async function sendOrdinalsController(
     destination: string,
     inscriptionId: string,
-    paymentAddress: string
 ) {
     let initialFee = 0;
     let redeemFee = INITIAL_FEE;
-    const psbt = new Bitcoin.Psbt({
+    let psbt = new Bitcoin.Psbt({
         network: networkType == "testnet" ? Bitcoin.networks.testnet : Bitcoin.networks.bitcoin
     });
+
     const seed: string = process.env.MNEMONIC as string;
     const wallet = new SeedWallet({ networkType: networkType, seed: seed });
 
@@ -26,7 +27,8 @@ export async function sendOrdinalsController(
         inscriptionId
         // "e27c4838659659036fbdbbe869a49953d7fc65af607b160cff98736cea325b1ei0"
     );
-
+    console.log(inscriptionData);
+    
     psbt.addInput({
         hash: inscriptionData.txid,
         index: inscriptionData.vout,
@@ -41,17 +43,17 @@ export async function sendOrdinalsController(
         address: destination,
         value: inscriptionData.satoshi,
     });
-
+    
     const btcUtxos = await getUTXO(wallet.address, "testnet");
     do {
         initialFee = redeemFee;
         const selectedUtxo = await selectUTXO(btcUtxos, 0, initialFee);
-
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
         let value = 0;
 
         for (let i = 0; i < selectedUtxo.length; i++) {
+            
             psbt.addInput({
                 hash: selectedUtxo[i].txid,
                 index: selectedUtxo[i].vout,
@@ -68,9 +70,13 @@ export async function sendOrdinalsController(
             address: wallet.address,
             value: value - initialFee,
         })
-
+        // console.log("psbt ====>>>>", psbt.data);
+        psbt = wallet.signPsbt(psbt, wallet.ecPair);
+        
+        redeemFee = psbt.extractTransaction().virtualSize() * TESTNET_FEERATE;
         ////////////////////////////////////////////////////////////////////////////////////////////////
     } while (redeemFee != initialFee);
+
     // const feeRate = (await getFeeRate()) + 400;
     // console.log("feeRate ==> ", feeRate);
     // let FinalTotalBtcAmount = 0;
@@ -128,7 +134,7 @@ export const getInscriptionData = async (
             (inscription: any) => inscription.inscriptionId === inscriptionId
         );
         
-        return filterInscription;
+        return filterInscription.utxo;
     } catch (error: any) {
         console.log(error.data);
         throw new Error("Can not fetch Inscriptions!!");
