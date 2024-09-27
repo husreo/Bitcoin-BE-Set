@@ -101,11 +101,12 @@ export class SeedWallet {
     }
 
     signPsbt(psbt: bitcoin.Psbt, ecPair: ECPairInterface): bitcoin.Psbt {
-        const tweakedChildNode = ecPair.tweak(
-          bitcoin.crypto.taggedHash("TapTweak", ecPair.publicKey.subarray(1, 33))
-        );
+        // const tweakedChildNode = ecPair.tweak(
+        //   bitcoin.crypto.taggedHash("TapTweak", ecPair.publicKey.subarray(1, 33))
+        // );
         for (let i = 0; i < psbt.inputCount; i++) {
-          psbt.signInput(i, tweakedChildNode);
+        //   psbt.signInput(i, tweakedChildNode);
+          psbt.signInput(i, ecPair);
           psbt.validateSignaturesOfInput(i, () => true);
           psbt.finalizeInput(i);
         }

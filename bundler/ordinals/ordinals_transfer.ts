@@ -25,35 +25,32 @@ export async function sendOrdinalsController(
     const inscriptionData = await getInscriptionData(
         wallet.address,
         inscriptionId
-        // "e27c4838659659036fbdbbe869a49953d7fc65af607b160cff98736cea325b1ei0"
     );
-    console.log(inscriptionData);
-    
-    psbt.addInput({
-        hash: inscriptionData.txid,
-        index: inscriptionData.vout,
-        tapInternalKey: Buffer.from(wallet.publicKey, "hex").subarray(1, 33),
-        witnessUtxo: {
-            script: wallet.output,
-            value: inscriptionData.satoshi,
-        },
-    });
 
-    psbt.addOutput({
-        address: destination,
-        value: inscriptionData.satoshi,
-    });
+    // psbt.addInput({
+    //     hash: inscriptionData.txid,
+    //     index: inscriptionData.vout,
+    //     // tapInternalKey: Buffer.from(wallet.publicKey, "hex").subarray(1, 33),
+    //     witnessUtxo: {
+    //         script: wallet.output,
+    //         value: inscriptionData.satoshi,
+    //     },
+    // });
+
+    // psbt.addOutput({
+    //     address: destination,
+    //     value: inscriptionData.satoshi,
+    // });
     
     const btcUtxos = await getUTXO(wallet.address, "testnet");
     do {
+        
         initialFee = redeemFee;
         const selectedUtxo = await selectUTXO(btcUtxos, 0, initialFee);
         ////////////////////////////////////////////////////////////////////////////////////////////////
-
         let value = 0;
 
         for (let i = 0; i < selectedUtxo.length; i++) {
-            
             psbt.addInput({
                 hash: selectedUtxo[i].txid,
                 index: selectedUtxo[i].vout,
@@ -61,7 +58,6 @@ export async function sendOrdinalsController(
                     value: selectedUtxo[i].value,
                     script: wallet.output,
                 },
-                tapInternalKey: Buffer.from(wallet.publicKey, "hex").subarray(1, 33),
             })
             value += selectedUtxo[i].value;
         }
@@ -70,49 +66,14 @@ export async function sendOrdinalsController(
             address: wallet.address,
             value: value - initialFee,
         })
-        // console.log("psbt ====>>>>", psbt.data);
+
         psbt = wallet.signPsbt(psbt, wallet.ecPair);
-        
         redeemFee = psbt.extractTransaction().virtualSize() * TESTNET_FEERATE;
         ////////////////////////////////////////////////////////////////////////////////////////////////
     } while (redeemFee != initialFee);
 
-    // const feeRate = (await getFeeRate()) + 400;
-    // console.log("feeRate ==> ", feeRate);
-    // let FinalTotalBtcAmount = 0;
-    // let finalFee = 0;
-    // for (const btcutxo of btcUtxos) {
-    //     finalFee = await calculateTxFee(psbt, feeRate);
-    //     if (FinalTotalBtcAmount < finalFee && btcutxo.value > 10000) {
-    //         FinalTotalBtcAmount += btcutxo.value;
-    //         psbt.addInput({
-    //             hash: btcutxo.txid,
-    //             index: btcutxo.vout,
-    //             witnessScript: Buffer.from(witnessScript, "hex"),
-    //             witnessUtxo: {
-    //                 script: Buffer.from(p2msOutput, "hex"),
-    //                 value: btcutxo.value,
-    //             },
-    //         });
-    //     }
-    // }
-
-    // console.log("Pay finalFee =====================>", finalFee);
-
-    // if (FinalTotalBtcAmount < finalFee)
-    //     throw `Need more ${finalFee - FinalTotalBtcAmount} BTC for transaction`;
-
-    // console.log("FinalTotalBtcAmount ====>", FinalTotalBtcAmount);
-
-    // psbt.addOutput({
-    //     address: address,
-    //     value: FinalTotalBtcAmount - finalFee,
-    // });
-
-    // console.log("psbt.toHex() ==> ", psbt.toHex());
     const txHex = psbt.extractTransaction().toHex();
     const txId = await pushBTCpmt(txHex, networkType);
-    // return psbt.toHex();
 }
 
 export const getInscriptionData = async (
@@ -129,11 +90,12 @@ export const getInscriptionData = async (
                 Authorization: `Bearer ${process.env.OPENAPI_UNISAT_TOKEN}`,
             },
         };
+        
         const res = await axios.get(url, { ...config });
         const filterInscription = res.data.data.inscription.find(
             (inscription: any) => inscription.inscriptionId === inscriptionId
         );
-        
+
         return filterInscription.utxo;
     } catch (error: any) {
         console.log(error.data);
